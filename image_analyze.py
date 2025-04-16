@@ -7,8 +7,8 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 pics_dir = os.path.join(current_dir, "Satellite pics")
 select_pic = input("Please enter the first image file's name: ")
 select_pic2 = input("Please enter the second image file's name: ")
-img_2020 = cv2.imread(f"{pics_dir + "\\" + select_pic}")
-img_2025 = cv2.imread(f"{pics_dir + "\\" + select_pic2}")
+img1 = cv2.imread(f"{pics_dir + "\\" + select_pic}")
+img2 = cv2.imread(f"{pics_dir + "\\" + select_pic2}")
 
 #debugging
 #print(f"{pics_dir + "\\"}2020-02-07-00_00_2020-02-07-23_59_Sentinel-2_L2A_True_color.jpg")
@@ -16,37 +16,168 @@ img_2025 = cv2.imread(f"{pics_dir + "\\" + select_pic2}")
 #print(f"{pics_dir + "\\"}2025-03-07-00_00_2025-03-07-23_59_Sentinel-2_L2A_True_color.jpg")
 #print(img_2025)
 
-hsv_img2020 = cv2.cvtColor(img_2020, cv2.COLOR_BGR2HSV)
-hsv_img2025 = cv2.cvtColor(img_2025, cv2.COLOR_BGR2HSV)
+hsv_img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2HSV)
+hsv_img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2HSV)
 
-water_color = np.array([60, 30, 30]) #15, 30, 20
-upperwater_color = np.array([140, 255, 255]) #130, 255, 255
+water_color_threshold1 = np.array([60, 30, 30]) #15, 30, 20
+upper_water_color_threshold1 = np.array([140, 255, 255]) #130, 255, 255
 
-mask_img2020 = cv2.inRange(hsv_img2020, water_color, upperwater_color)
-mask_img2025 = cv2.inRange(hsv_img2025, water_color, upperwater_color)
+water_color_threshold2 = np.array([60, 30, 30])
+upper_water_color_threshold2 = np.array([140, 255, 255])
 
-area_img2020 = np.sum(mask_img2020 > 0)
-area_img2025 = np.sum(mask_img2025 > 0)
+mask_img1 = cv2.inRange(hsv_img1, water_color_threshold1, upper_water_color_threshold1)
+mask_img2 = cv2.inRange(hsv_img2, water_color_threshold2, upper_water_color_threshold2)
 
-percent_change = ((area_img2025 - area_img2020) / area_img2020) * 100
+area_img1 = np.sum(mask_img1 > 0)
+area_img2 = np.sum(mask_img2 > 0)
 
-if (percent_change > 100 or area_img2025 > 110000 or area_img2020 > 110000) :
-    water_color[0] += 12
-    water_color[1] += 31
-    print(water_color)
-    mask_img2020 = cv2.inRange(hsv_img2020, water_color, upperwater_color)
-    mask_img2025 = cv2.inRange(hsv_img2025, water_color, upperwater_color)
+percent_change = ((area_img2 - area_img1) / area_img1) * 100
 
-print(f"{area_img2020} px")
-print(f"{area_img2025} px")
+corrected_color = None
+corrected_color2 = None
+corrected_px = None
+corrected_px2 = None
+
+if (area_img1 > 700000 and area_img1 < 990000):
+    water_color_threshold1[0] += 13
+    water_color_threshold1[1] += 32
+    corrected_color = water_color_threshold1
+    mask_img1 = cv2.inRange(hsv_img1, water_color_threshold1, upper_water_color_threshold1)
+    corrected_px = np.sum(mask_img1 > 0)
+elif (area_img1 >= 990000 and area_img1 < 1190000):
+    water_color_threshold1[0] +=16
+    water_color_threshold1[1] +=35
+    corrected_color = water_color_threshold1
+    mask_img1 = cv2.inRange(hsv_img1, water_color_threshold1, upper_water_color_threshold1)
+    corrected_px = np.sum(mask_img1 > 0)
+elif (area_img1 >= 1190000 and area_img1 < 1290000):
+    water_color_threshold1[0] +=24
+    water_color_threshold1[1] +=42
+    corrected_color = water_color_threshold1
+    mask_img1 = cv2.inRange(hsv_img1, water_color_threshold1, upper_water_color_threshold1)
+    corrected_px = np.sum(mask_img1 > 0)
+elif (area_img1 >= 1290000 and area_img1 < 1390000):
+    water_color_threshold1[0] += 34
+    water_color_threshold1[1] += 52
+    corrected_color = water_color_threshold1
+    mask_img1 = cv2.inRange(hsv_img1, water_color_threshold1, upper_water_color_threshold1)
+    corrected_px = np.sum(mask_img1 > 0)
+elif (area_img1 >= 1390000 and area_img1 < 1444000):
+    water_color_threshold1[0] += 39
+    water_color_threshold1[1] += 60
+    corrected_color = water_color_threshold1
+    mask_img1 = cv2.inRange(hsv_img1, water_color_threshold1, upper_water_color_threshold1)
+    corrected_px = np.sum(mask_img1 > 0)
+elif (area_img1 >= 1444000):
+    water_color_threshold1[0] += 39
+    water_color_threshold1[1] += 69
+    corrected_color = water_color_threshold1
+    mask_img1 = cv2.inRange(hsv_img1, water_color_threshold1, upper_water_color_threshold1)
+    corrected_px = np.sum(mask_img1 > 0)
+
+if (area_img2 > 700000 and area_img2 < 990000):
+    water_color_threshold2[0] +=12
+    water_color_threshold2[1] +=31
+    corrected_color2 = water_color_threshold2
+    mask_img2 = cv2.inRange(hsv_img2, water_color_threshold2, upper_water_color_threshold2)
+    corrected_px2 = np.sum(mask_img2 > 0)
+elif (area_img2 >= 990000 and area_img2 < 1190000):
+    water_color_threshold2[0] +=16
+    water_color_threshold2[1] +=35
+    corrected_color2 = water_color_threshold2
+    mask_img2 = cv2.inRange(hsv_img2, water_color_threshold2, upper_water_color_threshold2)
+    corrected_px2 = np.sum(mask_img2 > 0)
+elif (area_img2 >= 1190000 and area_img2 < 1290000):
+    water_color_threshold2[0] +=24
+    water_color_threshold2[1] +=42
+    corrected_color2 = water_color_threshold2
+    mask_img2 = cv2.inRange(hsv_img2, water_color_threshold2, upper_water_color_threshold2)
+    corrected_px2 = np.sum(mask_img2 > 0)
+elif (area_img2 >= 1290000 and area_img2 < 1390000):
+    water_color_threshold2[0] += 34
+    water_color_threshold2[1] += 52
+    corrected_color2 = water_color_threshold2
+    mask_img2 = cv2.inRange(hsv_img2, water_color_threshold2, upper_water_color_threshold2)
+    corrected_px2 = np.sum(mask_img2 > 0)
+elif (area_img2 >= 1390000 and area_img2 < 1444000):
+    water_color_threshold2[0] += 39
+    water_color_threshold2[1] += 61
+    corrected_color2 = water_color_threshold2
+    mask_img2 = cv2.inRange(hsv_img2, water_color_threshold2, upper_water_color_threshold2)
+    corrected_px2 = np.sum(mask_img2 > 0)
+elif (area_img2 >= 1444000):
+    water_color_threshold2[0] += 39
+    water_color_threshold2[1] += 69
+    corrected_color2 = water_color_threshold2
+    mask_img2 = cv2.inRange(hsv_img2, water_color_threshold2, upper_water_color_threshold2)
+    corrected_px2 = np.sum(mask_img2 > 0)
+
+#debugging
+print(f"{area_img1} px")
+print(f"{area_img2} px")
+if corrected_color is not None:
+    print(f"{corrected_color} 1st image color correction")
+if corrected_color2 is not None:
+    print(f"{corrected_color2} 2nd image color correction")
+if corrected_px is not None:
+    print(f"{corrected_px} px after 1st image correction")
+if corrected_px2 is not None:
+    print(f"{corrected_px2} px after 2nd image correction")
 print(f"{percent_change}%")
-print(type(percent_change), type(area_img2020))
+print(type(percent_change), type(area_img1))
+
+def monthConverter(string):
+    try:
+        stringInteger = int(string)
+    except ValueError:
+        return "Invalid Month"
+    
+    match stringInteger:
+        case 1:
+            return "styczeń"
+        case 2:
+            return "luty"
+        case 3:
+            return "marzec"
+        case 4:
+            return "kwiecień"
+        case 5:
+            return "maj"
+        case 6:
+            return "czerwiec"
+        case 7:
+            return "lipiec"
+        case 8:
+            return "sierpień"
+        case 9:
+            return "wrzesień"
+        case 10:
+            return "październik"
+        case 11:
+            return "listopad"
+        case 12:
+            return "grudzień"
+        case _:
+            return "Invalid Month"
+
+def px_area():
+    if corrected_px is not None:
+        return str(corrected_px)
+    else:
+        return str(area_img1)
+
+def px_area2():
+    if corrected_px2 is not None:
+        return str(corrected_px2)
+    else:
+        return str(area_img2)
 
 plt.figure(figsize=(12,8))
 plt.subplot(1,2,1)
-plt.title("Tałty w 2020")
-plt.imshow(mask_img2020, cmap='Blues')
+plt.title(f"Jezioro Tałty, {select_pic[8:10]} {monthConverter(select_pic[5:7]).capitalize()} {select_pic[:4]}\n Powierzchnia: ~{px_area()} px²")
+plt.imshow(mask_img1, cmap='Blues')
 plt.subplot(1,2,2)
-plt.title("Tałty w 2025")
-plt.imshow(mask_img2025, cmap='Blues')
+plt.title(f"Jezioro Tałty, {select_pic2[8:10]} {monthConverter(select_pic2[5:7]).capitalize()} {select_pic2[:4]}\n Powierzchnia: ~{px_area2()} px²")
+plt.imshow(mask_img2, cmap='Blues')
+#plt.savefig(f"{current_dir}/{select_pic[0:10]}-{select_pic2[0:10]}.png", transparent=True)
 plt.show()
