@@ -7,20 +7,20 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 pics_dir = os.path.join(current_dir, "Satellite pics")
 select_pic = input("Please enter the first image file's name: ")
 select_pic2 = input("Please enter the second image file's name: ")
-img1 = cv2.imread(f"{pics_dir + "\\" + select_pic}")
-img2 = cv2.imread(f"{pics_dir + "\\" + select_pic2}")
+img1 = cv2.imread(os.path.join(pics_dir, select_pic))
+img2 = cv2.imread(os.path.join(pics_dir, select_pic2))
 
 #debugging
 #print(f"{pics_dir + "\\"}2020-02-07-00_00_2020-02-07-23_59_Sentinel-2_L2A_True_color.jpg")
-#print(img_2020)
+#print(img1)
 #print(f"{pics_dir + "\\"}2025-03-07-00_00_2025-03-07-23_59_Sentinel-2_L2A_True_color.jpg")
-#print(img_2025)
+#print(img2)
 
 hsv_img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2HSV)
 hsv_img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2HSV)
 
-water_color_threshold1 = np.array([60, 30, 30]) #15, 30, 20
-upper_water_color_threshold1 = np.array([140, 255, 255]) #130, 255, 255
+water_color_threshold1 = np.array([60, 30, 30])
+upper_water_color_threshold1 = np.array([140, 255, 255])
 
 water_color_threshold2 = np.array([60, 30, 30])
 upper_water_color_threshold2 = np.array([140, 255, 255])
@@ -33,84 +33,54 @@ area_img2 = np.sum(mask_img2 > 0)
 
 percent_change = ((area_img2 - area_img1) / area_img1) * 100
 
-corrected_color = None
-corrected_color2 = None
-corrected_px = None
-corrected_px2 = None
+def adjust_thresholds_for_images(hsv_img1, hsv_img2, threshold1, threshold2, upper_threshold1, upper_threshold2, target_area=520000, max_iterations=24, tolerance=15000):
+    current_threshold1 = threshold1.copy()
+    for i in range(max_iterations):
+        mask1 = cv2.inRange(hsv_img1, current_threshold1, upper_threshold1)
+        current_area1 = np.sum(mask1 > 0)
+        
+        if abs(current_area1 - target_area) <= tolerance:
+            break
+        
+        area_difference = current_area1 - target_area
+        adjustment_h = int(area_difference / 50000) + (1 if area_difference > 0 else -1)
+        adjustment_s = int(area_difference / 30000) + (2 if area_difference > 0 else -2)
+        
+        current_threshold1[0] += adjustment_h
+        current_threshold1[1] += adjustment_s
+        
+        current_threshold1[0] = max(0, min(179, current_threshold1[0]))
+        current_threshold1[1] = max(0, min(255, current_threshold1[1]))
+    
+    mask1 = cv2.inRange(hsv_img1, current_threshold1, upper_threshold1)
+    area1 = np.sum(mask1 > 0)
+    
+    current_threshold2 = threshold2.copy()
+    for i in range(max_iterations):
+        mask2 = cv2.inRange(hsv_img2, current_threshold2, upper_threshold2)
+        current_area2 = np.sum(mask2 > 0)
+        
+        if abs(current_area2 - target_area) <= tolerance:
+            break
+        
+        area_difference = current_area2 - target_area
+        adjustment_h = int(area_difference / 50000) + (1 if area_difference > 0 else -1)
+        adjustment_s = int(area_difference / 30000) + (2 if area_difference > 0 else -2)
+        
+        current_threshold2[0] += adjustment_h
+        current_threshold2[1] += adjustment_s
+        
+        current_threshold2[0] = max(0, min(179, current_threshold2[0]))
+        current_threshold2[1] = max(0, min(255, current_threshold2[1]))
+    
+    mask2 = cv2.inRange(hsv_img2, current_threshold2, upper_threshold2)
+    area2 = np.sum(mask2 > 0)
+    
+    return current_threshold1, area1, mask1, current_threshold2, area2, mask2
 
-if (area_img1 > 700000 and area_img1 < 990000):
-    water_color_threshold1[0] += 13
-    water_color_threshold1[1] += 32
-    corrected_color = water_color_threshold1
-    mask_img1 = cv2.inRange(hsv_img1, water_color_threshold1, upper_water_color_threshold1)
-    corrected_px = np.sum(mask_img1 > 0)
-elif (area_img1 >= 990000 and area_img1 < 1190000):
-    water_color_threshold1[0] +=16
-    water_color_threshold1[1] +=35
-    corrected_color = water_color_threshold1
-    mask_img1 = cv2.inRange(hsv_img1, water_color_threshold1, upper_water_color_threshold1)
-    corrected_px = np.sum(mask_img1 > 0)
-elif (area_img1 >= 1190000 and area_img1 < 1290000):
-    water_color_threshold1[0] +=24
-    water_color_threshold1[1] +=42
-    corrected_color = water_color_threshold1
-    mask_img1 = cv2.inRange(hsv_img1, water_color_threshold1, upper_water_color_threshold1)
-    corrected_px = np.sum(mask_img1 > 0)
-elif (area_img1 >= 1290000 and area_img1 < 1390000):
-    water_color_threshold1[0] += 34
-    water_color_threshold1[1] += 52
-    corrected_color = water_color_threshold1
-    mask_img1 = cv2.inRange(hsv_img1, water_color_threshold1, upper_water_color_threshold1)
-    corrected_px = np.sum(mask_img1 > 0)
-elif (area_img1 >= 1390000 and area_img1 < 1444000):
-    water_color_threshold1[0] += 39
-    water_color_threshold1[1] += 60
-    corrected_color = water_color_threshold1
-    mask_img1 = cv2.inRange(hsv_img1, water_color_threshold1, upper_water_color_threshold1)
-    corrected_px = np.sum(mask_img1 > 0)
-elif (area_img1 >= 1444000):
-    water_color_threshold1[0] += 39
-    water_color_threshold1[1] += 69
-    corrected_color = water_color_threshold1
-    mask_img1 = cv2.inRange(hsv_img1, water_color_threshold1, upper_water_color_threshold1)
-    corrected_px = np.sum(mask_img1 > 0)
+corrected_color, corrected_px, mask_img1, corrected_color2, corrected_px2, mask_img2 = adjust_thresholds_for_images(hsv_img1, hsv_img2, water_color_threshold1, water_color_threshold2, upper_water_color_threshold1, upper_water_color_threshold2)
 
-if (area_img2 > 700000 and area_img2 < 990000):
-    water_color_threshold2[0] +=12
-    water_color_threshold2[1] +=31
-    corrected_color2 = water_color_threshold2
-    mask_img2 = cv2.inRange(hsv_img2, water_color_threshold2, upper_water_color_threshold2)
-    corrected_px2 = np.sum(mask_img2 > 0)
-elif (area_img2 >= 990000 and area_img2 < 1190000):
-    water_color_threshold2[0] +=16
-    water_color_threshold2[1] +=35
-    corrected_color2 = water_color_threshold2
-    mask_img2 = cv2.inRange(hsv_img2, water_color_threshold2, upper_water_color_threshold2)
-    corrected_px2 = np.sum(mask_img2 > 0)
-elif (area_img2 >= 1190000 and area_img2 < 1290000):
-    water_color_threshold2[0] +=24
-    water_color_threshold2[1] +=42
-    corrected_color2 = water_color_threshold2
-    mask_img2 = cv2.inRange(hsv_img2, water_color_threshold2, upper_water_color_threshold2)
-    corrected_px2 = np.sum(mask_img2 > 0)
-elif (area_img2 >= 1290000 and area_img2 < 1390000):
-    water_color_threshold2[0] += 34
-    water_color_threshold2[1] += 52
-    corrected_color2 = water_color_threshold2
-    mask_img2 = cv2.inRange(hsv_img2, water_color_threshold2, upper_water_color_threshold2)
-    corrected_px2 = np.sum(mask_img2 > 0)
-elif (area_img2 >= 1390000 and area_img2 < 1444000):
-    water_color_threshold2[0] += 39
-    water_color_threshold2[1] += 61
-    corrected_color2 = water_color_threshold2
-    mask_img2 = cv2.inRange(hsv_img2, water_color_threshold2, upper_water_color_threshold2)
-    corrected_px2 = np.sum(mask_img2 > 0)
-elif (area_img2 >= 1444000):
-    water_color_threshold2[0] += 39
-    water_color_threshold2[1] += 69
-    corrected_color2 = water_color_threshold2
-    mask_img2 = cv2.inRange(hsv_img2, water_color_threshold2, upper_water_color_threshold2)
-    corrected_px2 = np.sum(mask_img2 > 0)
+percent_change_corrected = ((corrected_px2 - corrected_px) / corrected_px) * 100
 
 #debugging
 print(f"{area_img1} px")
@@ -124,7 +94,7 @@ if corrected_px is not None:
 if corrected_px2 is not None:
     print(f"{corrected_px2} px after 2nd image correction")
 print(f"{percent_change}%")
-print(type(percent_change), type(area_img1))
+print(f"{percent_change_corrected} after correction")
 
 def monthConverter(string):
     try:
