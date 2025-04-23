@@ -33,7 +33,7 @@ area_img2 = np.sum(mask_img2 > 0)
 
 percent_change = ((area_img2 - area_img1) / area_img1) * 100
 
-def detect_and_adjust_lake(img, hsv_img, lower_threshold, upper_threshold, target_area=440000, max_iterations=24, tolerance=5000):
+def detect_and_adjust_lake(img, hsv_img, lower_threshold, upper_threshold, target_area=372000, max_iterations=24, tolerance=5000):
     """
     Args:
         img: Original BGR image
@@ -66,7 +66,7 @@ def detect_and_adjust_lake(img, hsv_img, lower_threshold, upper_threshold, targe
         
         kernel = np.ones((5, 5), np.uint8)
         cleaned_mask = cv2.morphologyEx(water_mask, cv2.MORPH_OPEN, kernel, iterations=4)
-        cleaned_mask = cv2.morphologyEx(cleaned_mask, cv2.MORPH_CLOSE, kernel, iterations=6)
+        cleaned_mask = cv2.morphologyEx(cleaned_mask, cv2.MORPH_CLOSE, kernel, iterations=5)
         
         contours, _ = cv2.findContours(cleaned_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
@@ -126,7 +126,7 @@ def detect_and_adjust_lake(img, hsv_img, lower_threshold, upper_threshold, targe
     
     if best_contour is not None:
         vis_img = img.copy()
-        cv2.drawContours(vis_img, [best_contour], 0, (0, 255, 0), 2)
+        cv2.drawContours(vis_img, [best_contour], 0, (10, 40, 255), 3)
         return best_threshold, best_mask, best_area, vis_img
     else:
         water_mask = cv2.inRange(hsv_img, lower_threshold, upper_threshold)
