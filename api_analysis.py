@@ -44,9 +44,7 @@ class LakeMonitor:
         self.authenticate()
             
     def authenticate(self):
-        #Sentinel Hub OAuth2 service, get access token.
         try:
-            # Create OAuth2 client
             client = BackendApplicationClient(client_id=self.client_id)
             oauth = OAuth2Session(client=client)
             
@@ -79,7 +77,6 @@ class LakeMonitor:
             start_date (str): Start date in format 'YYYYMMDD'
             end_date (str): End date in format 'YYYYMMDD'
             cloud_percent (int): Maximum cloud percentage to accept
-            
         Returns:
             dict: List of available products
         """
@@ -105,7 +102,6 @@ class LakeMonitor:
             }
         }
         
-        # Make request to Sentinel Hub Catalog API
         try:
             if not self.token:
                 self.authenticate()
@@ -364,10 +360,8 @@ class LakeMonitor:
             
         with rasterio.open(band_paths['B08']) as src:
             nir_band = src.read(1).astype(np.float32)
-        
         # Calculate NDWI
         ndwi = self.calculate_ndwi(green_band, nir_band)
-        
         # Format date
         date = datetime.datetime.strptime(date_str, '%Y-%m-%d').strftime('%Y-%m-%d')
         
@@ -392,7 +386,7 @@ class LakeMonitor:
             product_info (dict): Product information with path and band paths
             save_previews (bool): Whether to save preview images
         Returns:
-            tuple: (date, water_area_km2, water_pixels, cloud_percentage, preview_paths)
+            tuple: (date, water_area_km2percent, water_pixels, cloud_percentage, preview_paths)
         """
         band_paths = product_info['band_paths']
         date_str = product_info['date']
@@ -424,10 +418,10 @@ class LakeMonitor:
         water_mask = water_mask & valid_pixels
         
         # Calculate water area
-        pixel_area_m2 = abs(transform[0] * transform[4])  # Area of one pixel in square meters
+        pixel_area_m2 = abs(transform[0] * transform[4])  # Area of one pixel
         water_pixels = np.sum(water_mask)
         water_area_m2 = water_pixels * pixel_area_m2
-        water_area_km2 = water_area_m2 / 1_000_000  # Convert to square kilometers
+        water_area_km2percent = water_area_m2 / 1_000_000  # Convert to square kilometers
         
         # Calculate cloud percentage
         cloud_percentage = (np.sum(cloud_mask) / cloud_mask.size) * 100
@@ -456,7 +450,7 @@ class LakeMonitor:
             plt.close()
             preview_paths['water_mask'] = water_mask_path
         
-        return date, water_area_km2, water_pixels, cloud_percentage, preview_paths
+        return date, water_area_km2percent, water_pixels, cloud_percentage, preview_paths
     
     def analyze_all_products(self, product_data, save_previews=True):
         """
@@ -476,14 +470,14 @@ class LakeMonitor:
                 )
                 results.append({
                     'date': date,
-                    'water_area_km2': water_area,
+                    'water_area_km2percent': water_area,
                     'water_pixels': water_pixels,
                     'cloud_percentage': cloud_percentage,
                     'rgb_preview': preview_paths.get('rgb', ''),
                     'ndwi_preview': preview_paths.get('ndwi', ''),
                     'water_mask_preview': preview_paths.get('water_mask', '')
                 })
-                print(f"Analyzed {date}: Water area = {water_area:.2f} km²")
+                print(f"Analyzed {date}: Water area = {water_area:.2f}")
             except Exception as e:
                 print(f"Error analyzing {product_info['path']}: {str(e)}")
         
@@ -504,7 +498,7 @@ class LakeMonitor:
         
         # Handle any duplicate dates by taking the mean of measurements from the same day
         df = df.groupby('date').agg({
-            'water_area_km2': 'mean', 
+            'water_area_km2percent': 'mean', 
             'water_pixels': 'mean',
             'cloud_percentage': 'mean'
         }).reset_index()
@@ -520,21 +514,21 @@ class LakeMonitor:
     
         # Choose interpolation method based on available data points
         interp_method = 'linear'  # Default to linear which needs only 2 points
-        if len(df) >= 4:  # Only use cubic if we have enough data points
+        if len(df) >= 4:  # Only use cubic if we have enough data points [not enough for now]
             try:
                 # Try cubic first
-                df_reindexed['water_area_km2'] = df_reindexed['water_area_km2'].interpolate(method='cubic')
+                df_reindexed['water_area_km2percent'] = df_reindexed['water_area_km2percent'].interpolate(method='cubic')
             except ValueError:
                 # Fall back to linear if cubic fails
                 print("Warning: Cubic interpolation failed, using linear interpolation instead.")
-                df_reindexed['water_area_km2'] = df_reindexed['water_area_km2'].interpolate(method='linear')
+                df_reindexed['water_area_km2percent'] = df_reindexed['water_area_km2percent'].interpolate(method='linear')
         else:
             # Use linear interpolation for fewer data points
-            df_reindexed['water_area_km2'] = df_reindexed['water_area_km2'].interpolate(method='linear')
+            df_reindexed['water_area_km2percent'] = df_reindexed['water_area_km2percent'].interpolate(method='linear')
     
         # For other columns, always use linear interpolation
         for col in df_reindexed.columns:
-            if col != 'water_area_km2' and col in df.columns:
+            if col != 'water_area_km2percent' and col in df.columns:
                 df_reindexed[col] = df_reindexed[col].interpolate(method='linear')
         
         # Reset index to make date a column again
@@ -573,24 +567,27 @@ class LakeMonitor:
         plt.figure(figsize=(12, 6))
         
         # Plot actual data points
-        plt.scatter(df['date'], df['water_area_km2'], color='blue', label='Observed')
+        plt.scatter(df['date'], df['water_area_km2percent'], color='blue', label='Observed')
         
         # Plot original line
-        plt.plot(df['date'], df['water_area_km2'], 'b-', alpha=0.5)
+        plt.plot(df['date'], df['water_area_km2percent'], 'b-', alpha=0.5)
         
         # Plot interpolated data if provided
         if interpolated_df is not None and not interpolated_df.empty:
-            plt.plot(interpolated_df['date'], interpolated_df['water_area_km2'], 
+            plt.plot(interpolated_df['date'], interpolated_df['water_area_km2percent'], 
                     'r--', label='Interpolated')
         
         # Add labels and title
         plt.xlabel('Date')
-        plt.ylabel('Water Area (km²)')
+        plt.ylabel('Water Area Change [%]')
         if title:
             plt.title(title)
         else:
             plt.title(f'{self.lake_name} Water Level Changes')
         
+        plt.ylim(0.5, 1.1)
+        plt.yticks(np.arange(0.5, 1.1, 0.1))
+
         # Format x-axis to show dates nicely
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
         plt.gca().xaxis.set_major_locator(mdates.MonthLocator(interval=2))
@@ -637,16 +634,20 @@ class LakeMonitor:
         
         # Plot water level chart in top row
         ax_chart = fig.add_subplot(gs[0, :])
-        ax_chart.scatter(df['date'], df['water_area_km2'], color='blue', label='Observed')
-        ax_chart.plot(df['date'], df['water_area_km2'], 'b-', alpha=0.5)
+        ax_chart.scatter(df['date'], df['water_area_km2percent'], color='blue', label='Observed')
+        ax_chart.plot(df['date'], df['water_area_km2percent'], 'b-', alpha=0.5)
         
         # Mark the sample points on the chart
-        ax_chart.scatter(samples['date'], samples['water_area_km2'], color='red', s=100, 
+        ax_chart.scatter(samples['date'], samples['water_area_km2percent'], color='red', s=100, 
                         zorder=5, label='Samples shown below')
         
         ax_chart.set_xlabel('Date')
-        ax_chart.set_ylabel('Water Area (km²)')
+        ax_chart.set_ylabel('Water Area Change [%]')
         ax_chart.set_title(f'{self.lake_name} Water Level Changes')
+
+        ax_chart.set_ylim(0.5, 1.1)
+        ax_chart.set_yticks(np.arange(0.5, 1.1, 0.1))
+
         ax_chart.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
         ax_chart.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
         fig.autofmt_xdate()
@@ -745,67 +746,25 @@ class LakeMonitor:
         
         return df_filtered, df_interpolated
 
-
-# Example usage
 if __name__ == "__main__":
-    client_id = ""#api client id here!
-    client_secret= ""#api secret here!
+    client_id = "ac670edb-f428-41ba-8af8-2fd3fed1f3a6"#api client id here!
+    client_secret= "V9341KXU0FExfd12SDMoanSzvCZJKZOM"#api secret here!
 
     lake_talty_coords = [
-        (21.489688755215752, 53.90419557585972),
-		(21.479090855361903, 53.91016532222625),
-		(21.473441390838587, 53.90626435415567),
-		(21.47452722082508, 53.89664137732353),
-		(21.481516459551074, 53.8851057348175),
-		(21.49169227036299, 53.8771189015404),
-        (21.49579760349613, 53.86396582268583),
-        (21.501851707155424, 53.86237185780391),
-        (21.51259312929008, 53.85699780053659),
-        (21.517117340801377, 53.85827852748221),
-        (21.530396699097338, 53.849671044844285),
-        (21.546909206218288, 53.83975111713542),
-        (21.54169196428319, 53.83301227402097),
-        (21.54150425980211, 53.82534227542496),
-        (21.55006209507866, 53.819404054699646),
-        (21.555073049171995, 53.81923872318234),
-		(21.561039195027377, 53.814825747255725),
-		(21.55795040677708, 53.80428366705834),
-		(21.563243751405167, 53.80046235931451),
-		(21.574113944439688, 53.80276133707315),
-		(21.57195938466046, 53.8112513984008),
-		(21.575260716866865, 53.81776847101705),
-		(21.562428359914946, 53.827768308773784),
-		(21.565653119382688, 53.832754914931485),
-		(21.567736512243528, 53.840010553504726),
-		(21.562390950253615, 53.844129295198286),
-		(21.55609016771203, 53.856558338693844),
-		(21.548149225010377, 53.865781596566535),
-		(21.535368094475018, 53.87422531763508),
-		(21.524845855366834, 53.87618922222441),
-		(21.518899437639448, 53.88270379224869),
-		(21.513068249426226, 53.88502252241176),
-		(21.51815980168979, 53.895688074579226),
-		(21.51117412026781, 53.901530540352525),
-		(21.507023045778567, 53.891692867640984),
-		(21.50182307439232, 53.89352064443739),
-		(21.507463391384988, 53.90090437054786),
-		(21.503531391660147, 53.90457363405383),
-		(21.489688755215752, 53.90419557585972)
+        (21.5099,53.9447),
+        (21.5253,53.9082),
+		(21.5495,53.8778),
+        (21.5616,53.8552),
+        (21.5813,53.8490),
+        (21.5866,53.8345),
+        (21.6026,53.8157),
+        (21.5736,53.7879),
+        (21.5080,53.8419),
+        (21.4769,53.8780),
+        (21.4632,53.9028),
+        (21.4676,53.9250),
+        (21.5099,53.9447)
     ]
-    """(21.5580, 53.9244),
-        (21.5627, 53.9187),
-        (21.5668, 53.9132), 
-        (21.5700, 53.9054),
-        (21.5720, 53.8974),
-        (21.5683, 53.8915),
-        (21.5620, 53.8868),
-        (21.5548, 53.8870),
-        (21.5497, 53.8912),
-        (21.5462, 53.8975),
-        (21.5445, 53.9059),
-        (21.5458, 53.9138),
-        (21.5490, 53.9197),
-        (21.5580, 53.9244)"""
     # Initialize lake monitor
     monitor = LakeMonitor(
         client_id=client_id,
@@ -815,24 +774,22 @@ if __name__ == "__main__":
     )
     
     # Define date range for analysis
-    # Using one year of data
     end_date = datetime.datetime.now().strftime('%Y%m%d')
-    start_date = (datetime.datetime.now() - relativedelta(years=1)).strftime('%Y%m%d')
+    start_date = (datetime.datetime.now() - relativedelta(years=5)).strftime('%Y%m%d')
     
     # Run the monitoring pipeline
-    # Limiting to 12 images (approximately monthly) to save resources
     filtered_df, interpolated_df = monitor.run_monitoring(
         start_date=start_date,
         end_date=end_date,
         cloud_percent=50,  # Higher threshold for initial query
-        limit=12,  # Limit to ~1 image per month
-        save_previews=True  # Save preview images
+        limit=60,  # Limit to x images per month
+        save_previews=True  # Save preview images?
     )
     
     if not filtered_df.empty:
         print("\nStatistics for Lake Tałty water levels:")
-        print(f"Mean water area: {filtered_df['water_area_km2'].mean():.2f} km²")
-        print(f"Min water area: {filtered_df['water_area_km2'].min():.2f} km²")
-        print(f"Max water area: {filtered_df['water_area_km2'].max():.2f} km²")
+        print(f"Mean water area: {filtered_df['water_area_km2percent'].mean():.2f} ")
+        print(f"Min water area: {filtered_df['water_area_km2percent'].min():.2f} ")
+        print(f"Max water area: {filtered_df['water_area_km2percent'].max():.2f} ")
     else:
-        print("\nNo valid data found for Lake Tałty. Please check search parameters and credentials.")
+        print("\nNo valid data found. Please check search parameters and credentials!")
