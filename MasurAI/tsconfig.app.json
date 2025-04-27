@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "types": ["vite/client"] // Dodatkowe typy dla Vite
+  },
+  "include": ["src/**/*"]
+}
