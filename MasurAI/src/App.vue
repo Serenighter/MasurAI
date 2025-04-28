@@ -6,41 +6,46 @@
 
     <!-- Sekcja wyboru daty -->
     <div class="date-card">
-      <h2>Wybierz datę:</h2>
+      <h2>Wybierz zakres dat:</h2>
       <div class="date-wrapper">
-        <div class="date-box" v-for="(date, index) in dates" :key="index">
+        <div class="date-box">
+          <label>Data początkowa:</label>
           <input 
             type="date" 
-            v-model="dates[index]" 
+            v-model="dates[0]" 
             class="date-input"
             @change="fetchData"
           >
-          <span class="formatted-date">{{ formatDate(date) }}</span>
+          <span class="formatted-date">{{ formatDate(dates[0]) }}</span>
+        </div>
+        <div class="date-box">
+          <label>Data końcowa:</label>
+          <input 
+            type="date" 
+            v-model="dates[1]" 
+            class="date-input"
+            @change="fetchData"
+          >
+          <span class="formatted-date">{{ formatDate(dates[1]) }}</span>
         </div>
       </div>
     </div>
 
     <!-- Sekcja porównania masek -->
     <div class="comparison-card">
-      <h3>Porównanie dwóch masek</h3>
-      <div class="mask-grid">
-        <div 
-          v-for="(mask, index) in masks" 
-          :key="index" 
-          class="mask-card"
-        >
-          <div class="mask-image">
-            <img v-if="mask" :src="mask" alt="Maska satelitarna">
-            <div v-else class="loading">Ładowanie obrazu...</div>
-          </div>
-          <div class="date-badge">{{ formatDate(dates[index]) }}</div>
+      <h3>Maska satelitarna dla wybranego zakresu dat</h3>
+      <div class="mask-container">
+        <div class="mask-image">
+          <img v-if="maskImage" :src="maskImage" alt="Maska satelitarna">
+          <div v-else class="loading">Ładowanie obrazu...</div>
         </div>
+        <div class="date-badge">{{ formatDate(dates[0]) }} - {{ formatDate(dates[1]) }}</div>
       </div>
     </div>
 
     <!-- Sekcja wyników -->
     <div class="results-card">
-      <h3>Wynik:</h3>
+      <h3>Wyniki analizy:</h3>
       <ul class="results-list">
         <li 
           v-for="(result, index) in analysisResults" 
@@ -67,11 +72,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { fetchMasks, fetchAnalysis } from './services/api'
 
-const dates = ref(['2021-10-28', '2025-01-28'])
-const masks = ref<string[]>([])
+const dates = ref(['2020-01-05', '2022-02-28']) // Initialize with your example dates
+const maskImage = ref<string>('')
 const analysisResults = ref<any[]>([])
 
 const formatDate = (dateString: string) => {
@@ -85,16 +90,51 @@ const formatDate = (dateString: string) => {
 
 const fetchData = async () => {
   try {
-    const maskPromises = dates.value.map(date => fetchMasks(date))
-    const maskResults = await Promise.all(maskPromises)
-    masks.value = maskResults.map(res => res.imageUrl)
+    // Pobieranie maski dla zakresu dat
+    const maskResult = await fetchMasks(dates.value[0], dates.value[1])
+      .catch(error => {
+        console.error(`Błąd pobierania maski:`, error)
+        return { imageUrl: '/placeholder.png' } // Fallback dla błędów
+      })
+    
+    // Dodaj timestamp do URL aby uniknąć cache'owania
+    maskImage.value = maskResult.imageUrl ? `${maskResult.imageUrl}?t=${Date.now()}` : ''
 
-    const analysisData = await fetchAnalysis(dates.value[0], dates.value[1])
-    analysisResults.value = analysisData.results
+    // Pobieranie wyników analizy
+    const analysisResponse = await fetchAnalysis(dates.value[0], dates.value[1])
+    if (analysisResponse && analysisResponse.data && analysisResponse.data.results) {
+      analysisResults.value = analysisResponse.data.results.map((item: any) => ({
+        ...item,
+        // Konwersja nazw plików PNG na czytelne daty
+        date: convertImageNameToDate(item.filename),
+        parameter: item.parameter ? item.parameter.replace(/_/g, ' ') : 'Nieznany parametr'
+      }))
+    } else {
+      analysisResults.value = []
+    }
   } catch (error) {
     console.error('Błąd pobierania danych:', error)
+    // Obsługa UI dla błędów
+    maskImage.value = ''
+    analysisResults.value = []
   }
 }
+
+// Pomocnicza funkcja do konwersji nazw plików
+const convertImageNameToDate = (filename: string) => {
+  if (!filename) return 'Nieznana data'
+  const datePart = filename.match(/(\d{4}-\d{2}-\d{2})/)?.[0] || ''
+  return datePart ? new Date(datePart).toLocaleDateString('pl-PL', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  }) : 'Nieznana data'
+}
+
+// Wywołaj fetchData przy montowaniu komponentu
+onMounted(() => {
+  fetchData()
+})
 </script>
 
 <style scoped>
@@ -103,12 +143,14 @@ const fetchData = async () => {
   margin: 0 auto;
   padding: 20px;
   min-height: 100vh;
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+  background-color: darkorange;
   background: linear-gradient(
     to right,
-    #e3f2fd 250px,
-    #f8f9fa 250px,
-    #f8f9fa calc(100% - 250px),
-    #e3f2fd calc(100% - 250px)
+    #C7E4D9 1000px,
+    #C7E4D9 100px,
+    #C7E4D9 calc(100% - 450px),
+    #C7E4D9 calc(100% - 450px)
   );
 }
 
@@ -116,8 +158,8 @@ const fetchData = async () => {
   position: fixed;
   top: 0;
   height: 100vh;
-  width: 250px;
-  background: #e3f2fd;
+  width: 1000px;
+  background: #D6EEEB;
   z-index: -1;
 }
 
@@ -130,11 +172,12 @@ const fetchData = async () => {
 }
 
 .date-card {
-  background: white;
+  background: #86d0c6;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
 }
 
 .date-wrapper {
@@ -148,10 +191,18 @@ const fetchData = async () => {
   position: relative;
 }
 
+.date-box label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #2a348e;
+}
+
 .date-input {
+  background-color: #D6EEEB;
   width: 200px;
   padding: 8px 12px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid #1294A7;
   border-radius: 8px;
   font-size: 14px;
 }
@@ -161,33 +212,27 @@ const fetchData = async () => {
   top: 50%;
   right: 15px;
   transform: translateY(-50%);
-  color: #666;
+  color: #111111;
   pointer-events: none;
 }
 
 .comparison-card {
-  background: white;
+  background: #86d0c6;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.mask-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
-  margin-top: 20px;
-}
-
-.mask-card {
+.mask-container {
   border: 2px solid #e0e0e0;
   border-radius: 12px;
   overflow: hidden;
+  margin-top: 20px;
 }
 
 .mask-image {
-  height: 300px;
+  height: 400px;
   background: #f1f3f5;
   display: flex;
   align-items: center;
@@ -210,7 +255,7 @@ const fetchData = async () => {
 }
 
 .results-card {
-  background: white;
+  background: #86d0c6;
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -271,12 +316,12 @@ const fetchData = async () => {
 }
 
 h2 {
-  color: #1a237e;
+  color: #2a348e;
   margin: 0 0 16px 0;
 }
 
 h3 {
-  color: #2c3e50;
+  color: #2a348e;
   margin: 0 0 20px 0;
 }
 
