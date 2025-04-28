@@ -31,7 +31,7 @@
       </div>
     </div>
 
-    <!-- Sekcja porównania masek -->
+    <!-- Sekcja z maską -->
     <div class="comparison-card">
       <h3>Maska satelitarna dla wybranego zakresu dat</h3>
       <div class="mask-container">
@@ -42,42 +42,15 @@
         <div class="date-badge">{{ formatDate(dates[0]) }} - {{ formatDate(dates[1]) }}</div>
       </div>
     </div>
-
-    <!-- Sekcja wyników -->
-    <div class="results-card">
-      <h3>Wyniki analizy:</h3>
-      <ul class="results-list">
-        <li 
-          v-for="(result, index) in analysisResults" 
-          :key="index" 
-          class="result-item"
-        >
-          <div class="result-header">
-            <span class="location">{{ result.location }}</span>
-            <span class="date">{{ result.date }}</span>
-          </div>
-          <div class="result-content">
-            <span class="parameter">{{ result.parameter }}</span>
-            <span 
-              class="status"
-              :class="{'interpolated': result.type === 'interpolated'}"
-            >
-              {{ result.type === 'interpolated' ? 'Interpolowane' : 'Obserwowane' }}
-            </span>
-          </div>
-        </li>
-      </ul>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { fetchMasks, fetchAnalysis } from './services/api'
+import { fetchMasks } from './services/api'
 
-const dates = ref(['2020-01-05', '2022-02-28']) // Initialize with your example dates
+const dates = ref(['2020-01-05', '2022-02-28'])
 const maskImage = ref<string>('')
-const analysisResults = ref<any[]>([])
 
 const formatDate = (dateString: string) => {
   const options: Intl.DateTimeFormatOptions = { 
@@ -90,48 +63,19 @@ const formatDate = (dateString: string) => {
 
 const fetchData = async () => {
   try {
-    // Pobieranie maski dla zakresu dat
     const maskResult = await fetchMasks(dates.value[0], dates.value[1])
       .catch(error => {
-        console.error(`Błąd pobierania maski:`, error)
-        return { imageUrl: '/placeholder.png' } // Fallback dla błędów
+        console.error('Błąd pobierania maski:', error)
+        return { imageUrl: '/placeholder.png' }
       })
     
-    // Dodaj timestamp do URL aby uniknąć cache'owania
     maskImage.value = maskResult.imageUrl ? `${maskResult.imageUrl}?t=${Date.now()}` : ''
-
-    // Pobieranie wyników analizy
-    const analysisResponse = await fetchAnalysis(dates.value[0], dates.value[1])
-    if (analysisResponse && analysisResponse.data && analysisResponse.data.results) {
-      analysisResults.value = analysisResponse.data.results.map((item: any) => ({
-        ...item,
-        // Konwersja nazw plików PNG na czytelne daty
-        date: convertImageNameToDate(item.filename),
-        parameter: item.parameter ? item.parameter.replace(/_/g, ' ') : 'Nieznany parametr'
-      }))
-    } else {
-      analysisResults.value = []
-    }
   } catch (error) {
     console.error('Błąd pobierania danych:', error)
-    // Obsługa UI dla błędów
     maskImage.value = ''
-    analysisResults.value = []
   }
 }
 
-// Pomocnicza funkcja do konwersji nazw plików
-const convertImageNameToDate = (filename: string) => {
-  if (!filename) return 'Nieznana data'
-  const datePart = filename.match(/(\d{4}-\d{2}-\d{2})/)?.[0] || ''
-  return datePart ? new Date(datePart).toLocaleDateString('pl-PL', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric'
-  }) : 'Nieznana data'
-}
-
-// Wywołaj fetchData przy montowaniu komponentu
 onMounted(() => {
   fetchData()
 })
@@ -144,7 +88,6 @@ onMounted(() => {
   padding: 20px;
   min-height: 100vh;
   font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
-  background-color: darkorange;
   background: linear-gradient(
     to right,
     #C7E4D9 1000px,
@@ -153,6 +96,7 @@ onMounted(() => {
     #C7E4D9 calc(100% - 450px)
   );
 }
+
 
 .side-decoration {
   position: fixed;
