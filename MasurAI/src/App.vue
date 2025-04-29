@@ -1,15 +1,13 @@
 <template>
   <div class="container">
-    <!-- Niebieskie paski boczne -->
     <div class="side-decoration left"></div>
     <div class="side-decoration right"></div>
 
-    <!-- Sekcja wyboru daty -->
     <div class="date-card">
-      <h2>Wybierz zakres dat:</h2>
+      <h2>Wybierz dwie daty, aby porównać maski:</h2>
       <div class="date-wrapper">
         <div class="date-box">
-          <label>Data początkowa:</label>
+          <label>Pierwsza data:</label>
           <input 
             type="date" 
             v-model="dates[0]" 
@@ -19,7 +17,7 @@
           <span class="formatted-date">{{ formatDate(dates[0]) }}</span>
         </div>
         <div class="date-box">
-          <label>Data końcowa:</label>
+          <label>Druga data:</label>
           <input 
             type="date" 
             v-model="dates[1]" 
@@ -31,15 +29,28 @@
       </div>
     </div>
 
-    <!-- Sekcja z maską -->
     <div class="comparison-card">
-      <h3>Maska satelitarna dla wybranego zakresu dat</h3>
+      <h3>Maski dla wybranych dat</h3>
       <div class="mask-container">
         <div class="mask-image">
-          <img v-if="maskImage" :src="maskImage" alt="Generated mask">
-          <img v-else :src="'/img/error-placeholder.png'" alt="Error placeholder">
+          <div v-if="loading" class="loading-anim">
+            <div class="spinner"></div>
+            <span class="loading-text">Ładowanie obrazu...</span>
+          </div>
+          <template v-else>
+            <img 
+              v-if="maskImage"
+              :src="maskImage" 
+              alt="Generated mask"
+              class="fade-in"
+            >
+            <div v-else class="error-message">
+              <span>  Brak dostępnego obrazu</span>
+              <p>Wybierz inne daty dla porównania masek</p>
+            </div>
+          </template>
         </div>
-        <div class="date-badge">{{ formatDate(dates[0]) }} - {{ formatDate(dates[1]) }}</div>
+        <div class="date-badge">{{ formatDate(dates[0]) }} & {{ formatDate(dates[1]) }}</div>
       </div>
     </div>
   </div>
@@ -49,6 +60,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { fetchMasks } from './services/api'
 
+const loading = ref(false)
 const dates = ref(['2020-01-05', '2022-02-28'])
 const maskImage = ref<string | null>(null)
 
@@ -63,11 +75,14 @@ const formatDate = (dateString: string) => {
 
 const fetchData = async () => {
   try {
+    loading.value = true
     const maskResult = await fetchMasks(dates.value[0], dates.value[1])
     maskImage.value = maskResult.imageUrl
   } catch (error) {
     console.error('Błąd pobierania danych:', error)
-    maskImage.value = '/img/error-placeholder.png' // Ensure this path exists
+    maskImage.value = '/img/error-placeholder.png'
+  } finally {
+    loading.value = false
   }
 }
 
@@ -84,10 +99,10 @@ onUnmounted(() => {
 
 <style scoped>
 .container {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 20px;
-  min-height: 100vh;
+  padding: 50px;
+  min-height: 105vh;
   font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
   background: linear-gradient(
     to right,
@@ -173,20 +188,24 @@ onUnmounted(() => {
   border: 2px solid #e0e0e0;
   border-radius: 12px;
   overflow: hidden;
-  margin-top: 20px;
+  margin-top: 30px;
 }
 
 .mask-image {
-  height: 400px;
+  height: 70vh;
+  min-height: 400px;
   background: #f1f3f5;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 20px;
 }
 
 .mask-image img {
   max-width: 100%;
   max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
 }
 
@@ -270,8 +289,49 @@ h3 {
   margin: 0 0 20px 0;
 }
 
-.loading {
-  color: #666;
-  font-style: italic;
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  z-index: 10;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #2a348e;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+  align-self: center;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  color: #2a348e;
+  font-weight: 500;
+  text-align: center;
+}
+
+.fade-in {
+  animation: fadeIn 0.7s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 </style>
