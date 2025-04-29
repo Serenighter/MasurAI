@@ -53,6 +53,22 @@
         <div class="date-badge">{{ formatDate(dates[0]) }} & {{ formatDate(dates[1]) }}</div>
       </div>
     </div>
+  <div class="chart-card">
+      <button 
+          @click="toggleStaticImage"
+          class="chart-button"
+        >
+          {{ showStaticImage ? 'Ukryj wykres' : 'Pokaż wykres' }}
+      </button>
+
+      <div v-if="showStaticImage" class="static-image-container fade-in-animation">
+        <img 
+          src="/img/Jezioro Tałty_water_levels.png" 
+          alt="Wykres"
+          class="static-image"
+        >
+      </div>
+    </div>
   </div>
 </template>
 
@@ -60,6 +76,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { fetchMasks } from './services/api'
 
+const showStaticImage = ref(false)
 const loading = ref(false)
 const dates = ref(['2020-01-05', '2022-02-28'])
 const maskImage = ref<string | null>(null)
@@ -80,7 +97,7 @@ const fetchData = async () => {
     maskImage.value = maskResult.imageUrl
   } catch (error) {
     console.error('Błąd pobierania danych:', error)
-    maskImage.value = '/img/error-placeholder.png'
+    maskImage.value = null
   } finally {
     loading.value = false
   }
@@ -95,6 +112,9 @@ onUnmounted(() => {
     URL.revokeObjectURL(maskImage.value)
   }
 })
+const toggleStaticImage = () => {
+  showStaticImage.value = !showStaticImage.value
+}
 </script>
 
 <style scoped>
@@ -333,5 +353,45 @@ h3 {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+.chart-card {
+  background: #86d0c6;
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.fade-in-animation {
+  animation: fadeIn 0.7s ease-in;
+}
+
+.static-image-container {
+  margin-top: 20px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.static-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-button {
+  display: block;
+  margin: 0 auto;
+  padding: 10px 20px;
+  background: #2a348e;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.chart-button:hover {
+  background: #1a236e;
 }
 </style>
