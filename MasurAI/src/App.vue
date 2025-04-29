@@ -36,8 +36,8 @@
       <h3>Maska satelitarna dla wybranego zakresu dat</h3>
       <div class="mask-container">
         <div class="mask-image">
-          <img v-if="maskImage" :src="maskImage" alt="Maska satelitarna">
-          <div v-else class="loading">Ładowanie obrazu...</div>
+          <img v-if="maskImage" :src="maskImage" alt="Generated mask">
+          <img v-else :src="'/img/error-placeholder.png'" alt="Error placeholder">
         </div>
         <div class="date-badge">{{ formatDate(dates[0]) }} - {{ formatDate(dates[1]) }}</div>
       </div>
@@ -46,11 +46,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { fetchMasks } from './services/api'
 
 const dates = ref(['2020-01-05', '2022-02-28'])
-const maskImage = ref<string>('')
+const maskImage = ref<string | null>(null)
 
 const formatDate = (dateString: string) => {
   const options: Intl.DateTimeFormatOptions = { 
@@ -64,20 +64,21 @@ const formatDate = (dateString: string) => {
 const fetchData = async () => {
   try {
     const maskResult = await fetchMasks(dates.value[0], dates.value[1])
-      .catch(error => {
-        console.error('Błąd pobierania maski:', error)
-        return { imageUrl: '/placeholder.png' }
-      })
-    
-    maskImage.value = maskResult.imageUrl ? `${maskResult.imageUrl}?t=${Date.now()}` : ''
+    maskImage.value = maskResult.imageUrl
   } catch (error) {
     console.error('Błąd pobierania danych:', error)
-    maskImage.value = ''
+    maskImage.value = '/img/error-placeholder.png' // Ensure this path exists
   }
 }
 
 onMounted(() => {
   fetchData()
+})
+
+onUnmounted(() => {
+  if (maskImage.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(maskImage.value)
+  }
 })
 </script>
 
