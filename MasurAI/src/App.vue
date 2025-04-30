@@ -4,30 +4,51 @@
     <div class="side-decoration right"></div>
 
     <div class="date-card">
-      <h2>Wybierz dwie daty, aby porównać maski:</h2>
+      <h2>Wybierz zakres dat:</h2>
+      
+      <div class="calendar-wrapper">
+        <VCalendar
+          :min-date="new Date(2020, 0, 1)"
+          :max-date="new Date()"
+          :attributes="calendarAttributes"
+          first-day-of-week="1"
+          @dayclick="handleDateClick"
+          is-expanded
+        >
+          <template #day-content="{ day }">
+            <div class="day-content">
+              {{ day.day }}
+            </div>
+          </template>
+        </VCalendar>
+      </div>
       <div class="date-wrapper">
         <div class="date-box">
-          <label>Pierwsza data:</label>
-          <input 
-            type="date" 
-            v-model="dates[0]" 
-            class="date-input"
-            @change="fetchData"
-          >
-          <span class="formatted-date">{{ formatDate(dates[0]) }}</span>
+          <label>Data początkowa:</label>
+          <DatePicker
+            v-model="dates[0]"
+            :enable-time-picker="false"
+            :allowed-dates="availableDates"
+            :highlight="highlightConfig"
+            @update:model-value="fetchData"
+            locale="pl"
+            class="custom-datepicker"
+          />
         </div>
         <div class="date-box">
-          <label>Druga data:</label>
-          <input 
-            type="date" 
-            v-model="dates[1]" 
-            class="date-input"
-            @change="fetchData"
-          >
-          <span class="formatted-date">{{ formatDate(dates[1]) }}</span>
+          <label>Data końcowa:</label>
+          <DatePicker
+            v-model="dates[1]"
+            :enable-time-picker="false"
+            :allowed-dates="availableDates"
+            :highlight="highlightConfig"
+            @update:model-value="fetchData"
+            locale="pl"
+            class="custom-datepicker"
+          />
+        </div>
         </div>
       </div>
-    </div>
 
     <div class="comparison-card">
       <h3>Maski dla wybranych dat</h3>
@@ -63,7 +84,7 @@
 
       <div v-if="showStaticImage" class="static-image-container fade-in-animation">
         <img 
-          src="/img/Jezioro Tałty_water_levels.png" 
+          src="/img/Jezioro_Tałty_water_levels_chart.png" 
           alt="Wykres"
           class="static-image"
         >
@@ -73,22 +94,65 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import VCalendar from 'v-calendar'
 import { fetchMasks } from './services/api'
+import DatePicker from '@vuepic/vue-datepicker'
+import 'v-calendar/style.css'
+import '@vuepic/vue-datepicker/dist/main.css'
+import { AVAILABLE_DATES } from '@/config/dates';
 
+const availableDatesRaw = AVAILABLE_DATES
 const showStaticImage = ref(false)
 const loading = ref(false)
-const dates = ref(['2020-01-05', '2022-02-28'])
+const dates = ref<string[]>([availableDatesRaw[4], availableDatesRaw[15]])
 const maskImage = ref<string | null>(null)
 
-const formatDate = (dateString: string) => {
-  const options: Intl.DateTimeFormatOptions = { 
+const highlightConfig = computed(() => ({
+  dates: availableDates.value,
+  color: '#86d0c6',
+  style: {
+    backgroundColor: '#86d0c6',
+    borderRadius: '4px'
+  }
+}))
+const availableDates = computed(() => 
+  availableDatesRaw.map(date => new Date(date))
+)
+
+const formatDate = (dateString: string) => 
+  new Date(dateString).toLocaleDateString('pl-PL', { 
     day: '2-digit', 
     month: '2-digit', 
     year: 'numeric' 
-  }
-  return new Date(dateString).toLocaleDateString('pl-PL', options)
-}
+  })
+
+const formatDateToYYYYMMDD = (date: Date) => 
+  date.toISOString().split('T')[0]
+
+const calendarAttributes = computed(() => {
+const startDate = new Date(dates.value[0])
+const endDate = new Date(dates.value[1])
+  
+  return [
+    {
+      key: 'available',
+      dot: { color: 'green', class: 'available-date' },
+      dates: availableDates.value
+    },
+    {
+      key: 'selected',
+      highlight: { 
+        color: 'blue', 
+        fillMode: 'solid', 
+        class: 'selected-date' 
+      },
+      dates: startDate.getTime() === endDate.getTime() 
+        ? [startDate] 
+        : [{ start: startDate, end: endDate }]
+    }
+  ]
+})
 
 const fetchData = async () => {
   try {
@@ -100,6 +164,14 @@ const fetchData = async () => {
     maskImage.value = null
   } finally {
     loading.value = false
+  }
+}
+
+const handleDateClick = (day: { date: Date }) => {
+  const clickedDate = formatDateToYYYYMMDD(day.date)
+  if (availableDatesRaw.includes(clickedDate)) {
+    dates.value = [clickedDate, clickedDate]
+    fetchData()
   }
 }
 
@@ -185,15 +257,6 @@ const toggleStaticImage = () => {
   border: 2px solid #1294A7;
   border-radius: 8px;
   font-size: 14px;
-}
-
-.formatted-date {
-  position: absolute;
-  top: 50%;
-  right: 15px;
-  transform: translateY(-50%);
-  color: #111111;
-  pointer-events: none;
 }
 
 .comparison-card {
@@ -361,6 +424,7 @@ h3 {
   padding: 24px;
   margin-top: 24px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom: 10vh;
 }
 
 .fade-in-animation {
