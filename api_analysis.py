@@ -578,8 +578,8 @@ class LakeMonitor:
                     'r--', label='Interpolated')
         
         # Add labels and title
-        plt.xlabel('Date')
-        plt.ylabel('Water Area Change [%]')
+        plt.xlabel('Data')
+        plt.ylabel('Zmiana poziomu wody [%]')
         if title:
             plt.title(title)
         else:
@@ -641,8 +641,8 @@ class LakeMonitor:
         ax_chart.scatter(samples['date'], samples['water_area_km2percent'], color='red', s=100, 
                         zorder=5, label='Samples shown below')
         
-        ax_chart.set_xlabel('Date')
-        ax_chart.set_ylabel('Water Area Change [%]')
+        ax_chart.set_xlabel('Data')
+        ax_chart.set_ylabel('Zmiana obszaru wody [%]')
         ax_chart.set_title(f'{self.lake_name} Water Level Changes')
 
         ax_chart.set_ylim(0.5, 1.1)
@@ -726,7 +726,7 @@ class LakeMonitor:
         plot_path = self.plot_water_levels(
             df_filtered, 
             df_interpolated,
-            f'{self.lake_name} Water Level Changes ({begin_date} to {ending_date})'
+            f'{self.lake_name}, Zmiany poziomu wód ({begin_date} do {ending_date})'
         )
         
         # Create combined visualization if we have images
@@ -747,8 +747,8 @@ class LakeMonitor:
         return df_filtered, df_interpolated
 
 if __name__ == "__main__":
-    client_id = "ac670edb-f428-41ba-8af8-2fd3fed1f3a6"#api client id here!
-    client_secret= "V9341KXU0FExfd12SDMoanSzvCZJKZOM"#api secret here!
+    client_id = ""#api client id here!
+    client_secret= ""#api secret here!
 
     lake_talty_coords = [
         (21.5099,53.9447),
@@ -775,15 +775,15 @@ if __name__ == "__main__":
     
     # Define date range for analysis
     end_date = datetime.datetime.now().strftime('%Y%m%d')
-    start_date = (datetime.datetime.now() - relativedelta(years=5)).strftime('%Y%m%d')
+    start_date = (datetime.datetime.now() - relativedelta(years=4)).strftime('%Y%m%d')
     
     # Run the monitoring pipeline
     filtered_df, interpolated_df = monitor.run_monitoring(
         start_date=start_date,
         end_date=end_date,
         cloud_percent=50,  # Higher threshold for initial query
-        limit=60,  # Limit to x images per month
-        save_previews=True  # Save preview images?
+        limit=120,  # Limit to x images per month
+        save_previews=False  # Save preview images?
     )
     
     if not filtered_df.empty:
