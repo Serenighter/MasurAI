@@ -84,7 +84,7 @@
 
       <div v-if="showStaticImage" class="static-image-container fade-in-animation">
         <img 
-          src="/img/Jezioro_Tałty_water_levels_chart.png" 
+          src="/img/Talty_predictions.png" 
           alt="Wykres"
           class="static-image"
         >
