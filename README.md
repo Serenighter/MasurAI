@@ -1,5 +1,4 @@
 # <ins>MasurAI</ins>
-# http://masurai.sytes.net:3000/
 <sub>Pictures taken using copernicus browser.</sub>
 <sub>Images for the charts fetched from sentinelhub API.</sub>
 
